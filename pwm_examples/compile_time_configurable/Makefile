@@ -5,15 +5,17 @@
 ### START OF STUDENT EDITABLE LINES ###
 
 # Name of your project
-LD_NAME = example_project
+LD_NAME = PartA
 
 # Add lists of space separated source files
 # Own sources, e.g. main.c
-SRCS = example_project.c
+SRCS = main.c func_def.c
+# Header files for configuration. Adding the header file will make make compile on changes.
+HDRS = blinkenlights.h func_def.h
 # Library sources, e.g. xmc_gpio.c
 LIBSRCS = xmc_gpio.c xmc4_gpio.c
 # Precompiled libraries, e.g. -lm for math functions
-LIBLNK =
+LIBLNK = -lm
 
 # Change this line if the path to your XMC-Library differs, it will be overwritten before grading to
 # match the system the grading is performed on.
@@ -29,6 +31,7 @@ SCFLAGS +=
 
 ### END OF STUDENT EDITABLE LINES ###
 #####################################
+
 
 # Compiler
 CROSS_COMPILE=arm-none-eabi
@@ -112,6 +115,17 @@ LIBOBJS = $(patsubst %.c,$(LIB_BUILDDIR)/%.o,$(LIBSRCS))
 
 .PHONY: default program debug clean
 
+PARENT_DIR := $(notdir $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../))
+NOT_PACKED := $(shell cd ..; ls | grep -xv "Part[A-Z]")
+PACKED := $(shell cd ..; ls | grep -x "Part[A-Z]")
+ZIPS   := $(patsubst %,%.zip,$(PACKED))
+
+ifneq ($(NOT_PACKED),)
+	NOT_PACKING_STRING_1 := "NOTE: NOT PACKING THE FOLLOWING FILES: "
+	NOT_PACKING_STRING_2 := "(if you want to submit them, rename to 'Part[A-Z]'): "
+endif
+
+
 default: $(BUILDDIR)/main.elf $(BUILDDIR)/main.lst
 
 program: $(BUILDDIR)/main.hex $(BUILDDIR)/JLinkCommands
@@ -137,7 +151,7 @@ $(BUILDDIR)/%.elf: $(OBJS) $(LIBOBJS) $(BUILDDIR)/$(LD_NAME).ld
 	$(LD) $(LFLAGS) -o $@ $(OBJS) $(LIBOBJS) $(LIBLNK)
 	$(SZ) $@
 
-$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: %.c $(HDRS) | $(BUILDDIR)
 	echo "building $@"
 	$(CC) $(CFLAGS) -o $@ $<
 
@@ -168,6 +182,13 @@ $(BUILDDIR)/JLinkCommands: | $(BUILDDIR)
 # Write a script file for GDB
 $(BUILDDIR)/GDBCommands: | $(BUILDDIR)
 	echo "file ${BUILDDIR}/main.elf;target remote localhost:2331;monitor reset;load;break main;" | sed 's/;/\n/g' > $(BUILDDIR)/GDBCommands
+
+deliverable:
+	@echo "packing deliverable"
+	@echo $(NOT_PACKING_STRING_1)
+	@echo $(NOT_PACKED)
+	@echo $(NOT_PACKING_STRING_2)
+	$(shell `cd ..; zip $(PARENT_DIR).zip -r $(PACKED)`)
 
 clean:
 	rm -rf $(BUILDDIR)
